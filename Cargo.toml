@@ -1,0 +1,18 @@
+[package]
+name = "athame"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[workspace]
+members = [
+	"macro",
+	"cli",
+	"parse",
+]
+
+[dependencies]
+deref-derive = "0.1"
+termion = "2.0"
+uuid = { version = "1.2", features = ["v4"] }
