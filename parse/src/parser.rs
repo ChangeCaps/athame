@@ -1,11 +1,11 @@
 use athame::{
     error::Error,
+    ident::Ident,
     sources::{Source, SourceId},
     span::Span,
 };
 
 use crate::{
-    keyword::Keyword,
     lexer::Lexer,
     symbol::Symbol,
     token::{Token, TokenKind},
@@ -61,12 +61,41 @@ impl Parser {
     }
 
     pub fn next(&mut self) -> Result<&Token, Error> {
+        let span = self.span();
+
         if let Some(token) = self.try_next() {
             Ok(token)
         } else {
-            let token = Error::new("unexpected end of file");
+            let token = Error::new("unexpected end of file").with_span(span);
 
             Err(token)
+        }
+    }
+
+    pub fn peek(&self) -> Result<&Token, Error> {
+        if let Some(token) = self.try_peek() {
+            Ok(token)
+        } else {
+            let token = Error::new("unexpected end of file").with_span(self.span());
+
+            Err(token)
+        }
+    }
+
+    pub fn next_is<T>(&mut self, value: T) -> bool
+    where
+        TokenKind: PartialEq<T>,
+    {
+        let Some(token) = self.try_peek() else {
+            return false;
+        };
+
+        if token.kind == value {
+            self.index += 1;
+
+            true
+        } else {
+            false
         }
     }
 
@@ -102,12 +131,36 @@ impl Parser {
         Some((value, start.with(end)))
     }
 
-    pub fn expect<T: Expect>(&mut self, value: T) -> Result<(), Error> {
-        if value.is(self.next()?) {
+    pub fn expect<T>(&mut self, value: T) -> Result<(), Error>
+    where
+        TokenKind: PartialEq<T>,
+        T: std::fmt::Display,
+    {
+        if self.next()?.kind == value {
             Ok(())
         } else {
             Err(Error::new("unexpected token"))
         }
+    }
+
+    pub fn parse_list<T: Parse>(&mut self, terminator: &TokenKind) -> Result<Vec<T>, Error> {
+        let mut list = Vec::new();
+
+        loop {
+            if self.next_is(terminator.clone()) {
+                break;
+            }
+
+            list.push(self.parse()?);
+
+            if self.next_is(terminator.clone()) {
+                break;
+            }
+
+            self.expect(Symbol::Comma)?;
+        }
+
+        Ok(list)
     }
 }
 
@@ -115,44 +168,14 @@ pub trait Parse: Sized {
     fn parse(parser: &mut Parser) -> Result<Self, Error>;
 }
 
-pub trait Expect {
-    fn is(&self, token: &TokenKind) -> bool;
-}
+impl Parse for Ident {
+    fn parse(parser: &mut Parser) -> Result<Self, Error> {
+        let token = parser.next()?;
 
-impl Expect for Token {
-    fn is(&self, token: &TokenKind) -> bool {
-        self.kind.is(token)
-    }
-}
-
-impl Expect for TokenKind {
-    fn is(&self, token: &TokenKind) -> bool {
-        self == token
-    }
-}
-
-impl<T: Expect> Expect for &T {
-    fn is(&self, token: &TokenKind) -> bool {
-        (*self).is(token)
-    }
-}
-
-impl Expect for Symbol {
-    fn is(&self, token: &TokenKind) -> bool {
-        let TokenKind::Symbol(symbol) = token else {
-            return false;
-        };
-
-        self == symbol
-    }
-}
-
-impl Expect for Keyword {
-    fn is(&self, token: &TokenKind) -> bool {
-        let TokenKind::Keyword(keyword) = token else {
-            return false;
-        };
-
-        self == keyword
+        if let TokenKind::Ident(ref ident) = token.kind {
+            Ok(Ident::new(ident.as_str(), token.span))
+        } else {
+            Err(Error::new("expected identifier").with_span(token.span))
+        }
     }
 }

@@ -1,6 +1,7 @@
 pub mod block;
 pub mod class;
 pub mod data;
+pub mod decl;
 pub mod error;
 pub mod expr;
 pub mod field;
@@ -12,6 +13,7 @@ pub mod int;
 pub mod method;
 pub mod module;
 pub mod path;
+pub mod program;
 pub mod sources;
 pub mod span;
 pub mod specialization;

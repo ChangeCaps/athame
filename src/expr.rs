@@ -1,5 +1,3 @@
-use deref_derive::Deref;
-
 use crate::{ident::Ident, path::Path, span::Span};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -10,7 +8,7 @@ pub struct ParenExpr {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FieldExpr {
-    pub class: Expr,
+    pub class: Box<Expr>,
     pub field: Ident,
     pub span: Span,
 }
@@ -90,18 +88,28 @@ pub struct AssignExpr {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum ExprKind {
+pub enum Expr {
     Paren(ParenExpr),
     Path(Path),
+    Field(FieldExpr),
     Call(CallExpr),
+    Index(IndexExpr),
     Unary(UnaryExpr),
     Binary(BinaryExpr),
     Assign(AssignExpr),
 }
 
-#[derive(Clone, Debug, PartialEq, Deref)]
-pub struct Expr {
-    #[deref]
-    pub kind: ExprKind,
-    pub span: Span,
+impl Expr {
+    pub fn span(&self) -> Span {
+        match self {
+            Self::Paren(expr) => expr.span,
+            Self::Path(expr) => expr.span,
+            Self::Field(expr) => expr.span,
+            Self::Call(expr) => expr.span,
+            Self::Index(expr) => expr.span,
+            Self::Unary(expr) => expr.span,
+            Self::Binary(expr) => expr.span,
+            Self::Assign(expr) => expr.span,
+        }
+    }
 }

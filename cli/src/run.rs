@@ -2,7 +2,7 @@ use std::{io, path::PathBuf};
 
 use athame::{
     error::{Error, ErrorFormatter},
-    sources::{Source, Sources},
+    sources::Sources,
     span::Span,
 };
 use clap::Parser;
@@ -17,10 +17,7 @@ pub struct Run {
 impl Run {
     pub fn run(&self) {
         let mut sources = Sources::new();
-        let id = sources.add(Source::new("test/path.ath", "test"));
-
-        let span = Span::new(0, 4, id);
-        let error = Error::new("test").with_span(span);
+        let id = sources.open(&self.path);
 
         let mut stdout = io::stdout();
         let mut formatter = ErrorFormatter::new(&sources, &mut stdout);

@@ -55,24 +55,9 @@ impl<'a> Lexer<'a> {
         self.remaining().chars().nth(n)
     }
 
-    pub fn peek_n(&self, n: usize) -> Option<&'a str> {
-        let mut end = self.index;
-
-        for c in self.remaining().chars().take(n) {
-            end += c.len_utf8();
-        }
-
-        Some(&self.source.source()[self.index..end])
-    }
-
-    pub fn take_n(&mut self, n: usize) -> &'a str {
-        let index = self.index();
-
-        for _ in 0..n {
-            self.next();
-        }
-
-        &self.source.source()[index..self.index]
+    pub fn take2(&mut self) {
+        self.next();
+        self.next();
     }
 
     pub fn take_whitespace(&mut self) -> &'a str {
@@ -122,13 +107,13 @@ impl<'a> Lexer<'a> {
         let mut radix = 10;
 
         if self.remaining().starts_with("0x") {
-            self.take_n(2);
+            self.take2();
             radix = 16;
         } else if self.remaining().starts_with("0o") {
-            self.take_n(2);
+            self.take2();
             radix = 8;
         } else if self.remaining().starts_with("0b") {
-            self.take_n(2);
+            self.take2();
             radix = 2;
         }
 
@@ -141,11 +126,9 @@ impl<'a> Lexer<'a> {
             let digits = decimal.to_string().len() as i32;
 
             let value = value as f64 + decimal as f64 / f64::powi(10.0, digits);
-
-            return Ok(TokenKind::Float(value));
         }
 
-        Ok(TokenKind::Int(value))
+        todo!()
     }
 
     pub fn lex_ident(&mut self) -> Result<String, Error> {
@@ -163,22 +146,11 @@ impl<'a> Lexer<'a> {
         Ok(ident)
     }
 
-    pub fn lex_symbol(&mut self) -> Result<Symbol, Error> {
-        if let Some(s) = self.peek_n(1) {
-            if let Some(symbol) = Symbol::from_str(s) {
-                self.take_n(1);
-                return Ok(symbol);
-            }
+    pub fn lex_symbol(&mut self, c: char) -> Result<Symbol, Error> {
+        if let Some(symbol) = Symbol::from_parts(c, self.peek_nth(1)) {
+            return Ok(symbol);
         }
 
-        if let Some(s) = self.peek_n(2) {
-            if let Some(symbol) = Symbol::from_str(s) {
-                self.take_n(2);
-                return Ok(symbol);
-            }
-        }
-
-        let c = self.next().unwrap();
         Err(Error::new(format!("invalid character '{}'", c)).with_span(self.span(self.index + 1)))
     }
 
@@ -207,7 +179,7 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        Ok(TokenKind::Symbol(self.lex_symbol()?))
+        Ok(TokenKind::Symbol(self.lex_symbol(c)?))
     }
 
     pub fn lex(&mut self) -> Result<Token, Error> {
